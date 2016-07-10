@@ -4,82 +4,112 @@
 bool Button::isPause = false;
 bool isPlaying = false;
 
-void Button::playSong(std::string uri)
+std::string getlastWord(std::string str)
 {
-//			playAudio* playaudio = new playAudio;
-			if(!isPlaying)
-			{
-				playaudio->stop();
-				isPlaying = true;
-				playaudio->play_uri(uri.c_str());
-			}
-			else
-			{
-				playaudio->stop();
-				isPlaying = false;
-				playaudio->play_uri(uri.c_str());
-			}
+	int pos = str.find_last_of("/");
+	int len = str.length();
+	std::string out = str.substr(pos+1);
+	return out;
 }
 
-Button::Button()
+bool Button::FindSongInMap(string SongName, int& songIndex)
 {
-//	cb.append("combo");
-//	cb.append("box");
-//	cb.append("text");
-//	cb.set_active(1);
-//	cb.set_size_request(10,10);
-//	add(cb);
+	Info
+	bool status = false;
+	std::map<int, string>::iterator itr;
+	itr = mSongList.begin();
+	while(itr != mSongList.end())
+	{
+		if(itr->second == SongName)
+		{
+			songIndex = itr->first;
+			status = true;
+			break;
+		}
+		itr++;
+	}
+	return status;
+}
+
+void Button::playSong(int songIndex)
+{
+	Info
+	// trying to highlight row of listbox. currently it's not working
+	Gtk::ListBoxRow* row = listbox.get_row_at_index(songIndex);
+	listbox.drag_highlight_row(*row);
+	mCurrentIndex = songIndex;
+	string uri("file:");
+	std::map<int, string>::iterator itr;
+	if(!isPlaying)
+	{
+		playaudio->stop();
+		isPlaying = true;
+		itr = mSongList.find(songIndex);
+		uri.append(itr->second);
+		printf("\nuri is %s and isPlaying is %d", uri.c_str(), isPlaying);
+		playaudio->play_uri(uri.c_str());
+	}
+	else
+	{
+		playaudio->stop();
+		isPlaying = false;
+		itr = mSongList.find(songIndex);
+		uri.append(itr->second);
+		printf("\nuri is %s and isPlaying is %d", uri.c_str(), isPlaying);
+		playaudio->play_uri(uri.c_str());
+	}
+}
+
+Button::Button():labelIndex(0)
+{
+	Info
+	//windows in GTKmm open in the centre of the screen
+	set_position(Gtk::WIN_POS_CENTER);
+	set_default_size(900,400);
+	set_resizable(true);
+	set_opacity(1);
 	playaudio = new playAudio();
-	std::cout<<"Button creation in constructor\n";
-//	mBtnBox.add_pixlabel("53236364.jpg", "testButton");
+//	std::cout<<"Button creation in constructor\n";
 	set_title("Button Api");
-//	set_default_size(100,100);
 	add(mBtnBox);
-//	add(listbox);
-//	add(mBtn);
-//	set_border_width(10);
-//	mBtnBox.set_size_request(5,5);
-//	mBtnBox.set_margin_right(0);
-//	mBtnBox.set_margin_left(0);
-//	mBtnBox.set_margin_top(0);
-//	mBtnBox.set_margin_bottom(0);
 	mBtnBox.pack_start(listbox);
 	mBtnBox.pack_start(mBtnFile);
 	mBtnFile.set_label("Select");
+	mBtnFile.set_alignment(1, 2);
 	mBtnFile.signal_clicked().connect( sigc::mem_fun(*this, &Button::on_button_file_clicked) );
 	mBtnBox.pack_start(mBtn);
 	mBtn.set_label("Pause/Resume");
+	mBtn.set_alignment(10, 12);
 	mBtn.signal_clicked().connect(sigc::mem_fun(*this, &Button::pauseResume_button_clicked));
-//	mBtnBox.pack_start(mBtnFolder);
-//	mBtnFolder.signal_clicked().connect( sigc::mem_fun(*this, &Button::on_button_folder_clicked) );
-
-//			lb.set_label("vidhuA");
-//			lb1.set_label("AvidhuA");
-//			listbox.add(lb);
-//			listbox.add(lb1);
+	mBtnBox.pack_start(mBtnNext);
+	mBtnNext.set_label("Next");
+	mBtnNext.signal_clicked().connect(sigc::mem_fun(*this, &Button::Next_button_clicked));
+	mBtnBox.pack_start(mBtnPrevious);
+	mBtnPrevious.set_label("Previous");
+	mBtnPrevious.signal_clicked().connect(sigc::mem_fun(*this, &Button::Previous_button_clicked));
+	mBtnBox.pack_start(mProgressBar);
+	mProgressBar.set_text("time");
 	listbox.signal_button_release_event().connect(sigc::mem_fun(*this, &Button::on_button_release_event_m));
-//	lb1.signal_button_release_event().connect(sigc::mem_fun(*this, &Button::label_selected));
 	show_all_children();
 	
 }
 
 bool Button::label_selected(GdkEventButton* event)
 {
-	std::cout << "hi it worked !!" << std::endl;
+	Info
 }
 
 //function called when x button is clicked in window.
 //if you want to change functionality of x button then overwrite on_delete_event()
 bool Button::on_delete_event(GdkEventAny* event)
 {
-	//Gtk::Window::on_delete_event(event);
+	Info
 	this->hide();
-	//close();
 	playaudio->stop();
 	if(playaudio)
 	{
 		delete playaudio;
-        	std::cout << "playaudio object deleted\n";
+//        	std::cout << "playaudio object deleted\n";
 	}
 	exit(EXIT_SUCCESS);
 }
@@ -87,21 +117,24 @@ bool Button::on_delete_event(GdkEventAny* event)
 //function inherited from Gtk::widget 
 bool Button::on_button_release_event_m(GdkEventButton* release_event)
 {
-//	std::cout << "hi !" << get_focus_child()->get_name() <<  std::endl;
+	Info
 	Gtk::ListBoxRow* row = listbox.get_selected_row();
 	Gtk::Label* l = dynamic_cast<Gtk::Label*>(row->get_child());
-	std::cout << "Selected label Name is " << l->get_label() << endl;//row->get_index() << std::endl;
+	std::cout << "\nSelected label Name is " << l->get_label() << endl;//row->get_index() << std::endl;
 	//testThread.
-	terminate();
-	playSong(l->get_label());
-
-//	vector<Gtk::Widget*> childs = listbox.get_children();
-//	std::cout << childs[row->get_index()]->get_name() ;
+//	terminate();
+	playaudio->stop();
+	std::string uri("file:");
+	uri.append(l->get_label());
+	int songIndex = -1;
+	FindSongInMap(l->get_label(), songIndex);
+	playSong(songIndex);
 }
 
 void Button::pauseResume_button_clicked()
 {
-	std::cout<<"Pause Button clicked\n";
+	Info
+	std::cout<<"\nPause Button clicked";
 	if(!isPause)
 	{
 		mBtn.set_label("Resume");
@@ -117,8 +150,25 @@ void Button::pauseResume_button_clicked()
 	
 }
 
+void Button::Next_button_clicked()
+{
+	Info
+	if(++mCurrentIndex == mSongList.size())
+		mCurrentIndex = 0;
+	playSong(mCurrentIndex);
+}
+
+void Button::Previous_button_clicked()
+{
+	Info
+	if(mCurrentIndex == 0)
+		mCurrentIndex = mSongList.size() ;
+	playSong(--mCurrentIndex);
+}
+
 void Button::on_button_file_clicked()
 {
+	Info
 	Gtk::FileChooserDialog dialog("Choose file", Gtk::FILE_CHOOSER_ACTION_OPEN);
 	dialog.set_select_multiple();
 	dialog.set_transient_for(*this);
@@ -135,27 +185,31 @@ void Button::on_button_file_clicked()
 	{
 		case(Gtk::RESPONSE_OK):
 		{
-			std::vector<std::string> selectedFileNames;
-			/*std::string*/ mSelectedFileNames = dialog.get_filenames();
-			std::cout << mSelectedFileNames.size();
-//			std::vector<Gtk::Label> vLabel;
-//			Gtk::Label vLabel[25];
-//			vLabel.resize(mSelectedFileNames.size());
+//			std::vector<std::string> selectedFileNames;
+			/*std::string*/ 
+			mSelectedFileNames = dialog.get_filenames();
 			int i =0;
 			for(auto itr = mSelectedFileNames.begin(); itr != mSelectedFileNames.end(); itr++)
 			{
-				std::cout << *itr << std::endl;
-				vLabel[i].set_label(*itr);
-				listbox.add(vLabel[i]);
+				mSongList[i] = *itr;
+				cout << endl;
+				std::cout <<mSongList[i] ;
 				i++;
+//				std::cout << "last word is" << getlastWord(*itr) << std::endl;
+				//vLabel[i].set_label(getlastWord(*itr));
+				vLabel[labelIndex].set_label(*itr);
+				listbox.add(vLabel[labelIndex]);
+				labelIndex++;
 			}
 			show_all_children();
-			//this->hide();
-//			std::cout << "working fine\n" << "filename is :" << dialog.get_filename() << std::endl;
 			
 			std::string uri("file:");
 			uri.append(dialog.get_filename());
-			testThread= thread(&Button::playSong, this,uri);
+			printf("\nfilename = %s and mapSize = %d",(dialog.get_filename()).c_str(), mSongList.size());
+			int songNameIndex = -1;
+			FindSongInMap(dialog.get_filename(), songNameIndex);
+			printf("\nsongNameIndex =%d", songNameIndex);
+			testThread= thread(&Button::playSong, this, songNameIndex);
 			testThread.detach();
 //			playSong(uri);
 		}
@@ -164,11 +218,12 @@ void Button::on_button_file_clicked()
 
 Button::~Button()
 {
-	std::cout<<"Destructor\n";
+	Info
+//	std::cout<<"\nDestructor";
 	if(playaudio)
 	{
 		delete playaudio;
-		std::cout << "playaudio object deleted\n";
+//		std::cout << "playaudio object deleted\n";
 	}
 }
 

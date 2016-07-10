@@ -4,6 +4,8 @@
 #include <stdbool.h>
 #include <iostream>
 
+#define Info printf("\n%s:%d",__FUNCTION__, __LINE__);
+
 class playAudio
 {
 	private:
@@ -12,15 +14,15 @@ class playAudio
 	public:
 		playAudio()
 		{
-			std::cout << "playAudio constructor\n";	
+			std::cout << "\nplayAudio constructor";	
 		}
 		~playAudio()
 		{
-			std::cout << "playAudio destructor\n";
+			std::cout << "\nplayAudio destructor";
 		}
 		// function for showing error message in gstreamer processing
 		static gboolean bus_call(GstBus *bus, GstMessage *msg, void *msg_data);
-		static void play_uri(const char *uri);
+		void play_uri(const char *uri);
 		void stop();
 		void pause();
 		void resume();

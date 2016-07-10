@@ -3,6 +3,17 @@
 GMainLoop* playAudio::loop = NULL;
 GstElement* playAudio::pipeline = NULL;
 
+static void seekTime(GstElement *pipeline)
+{
+	Info
+	long long int position, length;
+	if(gst_element_query_position(pipeline, GST_FORMAT_TIME, &position)
+	&& gst_element_query_duration(pipeline, GST_FORMAT_TIME, &length))
+	{
+		printf("\nposition = %u and length = %u", GST_TIME_ARGS (position), GST_TIME_ARGS (length));
+	}
+}
+
 gboolean playAudio::bus_call(GstBus *bus, GstMessage *msg, void *user_data)
 {
 	switch (GST_MESSAGE_TYPE(msg)) {
@@ -29,33 +40,23 @@ gboolean playAudio::bus_call(GstBus *bus, GstMessage *msg, void *user_data)
 
 void playAudio::play_uri(const char *uri)
 {
-//	std::cout << "playAudio::play_uri => uri is " << uri ;//<< std::endl;
-//	std::string finalUri(uri);
-//	finalUri.erase(std::remove(finalUri.begin(), finalUri.end(), '\n'), finalUri.end());
-//	uri = finalUri.c_str();
 	GstBus *bus;
 
 	loop = g_main_loop_new(NULL, FALSE);
 	pipeline = gst_element_factory_make("playbin", "player");
 
-//	std::cout << "playAudio::play_uri => uri is " << uri ;//<< std::endl;
 	if (uri)
 	{
-//		std::cout << "\nuri is fine ";// << uri; 
 		g_object_set(G_OBJECT(pipeline), "uri", uri, NULL);
 	}
-//	else
-//		std::cout << "uri is null";
 	bus = gst_pipeline_get_bus(GST_PIPELINE(pipeline));
 	gst_bus_add_watch(bus, bus_call, NULL);
 	gst_object_unref(bus);
 
 	gst_element_set_state(GST_ELEMENT(pipeline), GST_STATE_PLAYING);
+	g_timeout_add (100, (GSourceFunc)seekTime, pipeline);
 
 	g_main_loop_run(loop);
-
-	//pause audio	
-	//gst_element_set_state(GST_ELEMENT(pipeline), GST_STATE_PAUSED);	
 
 	gst_element_set_state(GST_ELEMENT(pipeline), GST_STATE_NULL);
 	gst_object_unref(GST_OBJECT(pipeline));
@@ -77,3 +78,17 @@ void playAudio::resume()
 {
 	gst_element_set_state(GST_ELEMENT(pipeline), GST_STATE_PLAYING);
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
